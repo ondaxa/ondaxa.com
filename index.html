@@ -266,11 +266,11 @@ h1 .l2{color:var(--ink);font-weight:400}
   };
 
   var WIDE = {
-    vbx0:2, vbx1:210, vby:16, vbw:790, vbh:366, lock:'translate(250 44) scale(1.45)', wx:299.3, wy:124.2,
-    capx:299.3, capy:222, fs:11.5, fw:13, fq:44,
-    start:[[46,74,-24],[156,58,30],[14,152,13],[138,144,-37],[60,232,26],[172,220,-15],[26,308,-33],[150,306,21]],
-    cw:150, ch:44, ox:740, oy:142, colw:168, rowh:68, cols:2, sq:1,
-    inlet:[12,200,74,78,4], ctrl:[500,378]
+    vbx0:4, vbx1:4, vby:16, vbw:926, vbh:366, lock:'translate(200 44) scale(1.45)', wx:249.3, wy:124.2,
+    capx:249.3, capy:222, fs:11.5, fw:12.5, fq:44,
+    start:[[58,74,-24],[140,58,30],[40,152,13],[128,144,-37],[66,232,26],[148,220,-15],[46,308,-33],[134,306,21]],
+    cw:150, ch:44, ox:678, oy:142, colw:165, rowh:68, cols:2, sq:1,
+    inlet:[18,190,74,78,4], ctrl:[430,378]
   };
   var TALL = {
     vbx0:0, vbx1:0, vby:0, vbw:560, vbh:720, lock:'translate(110 250) scale(1.32)', wx:154.9, wy:323.0,
@@ -281,9 +281,20 @@ h1 .l2{color:var(--ink);font-weight:400}
   };
   var L = WIDE, nodes = [];
 
-  function setFrame(t) {
-    var x = L.vbx0 + (L.vbx1 - L.vbx0) * t;
-    svg.setAttribute('viewBox', x.toFixed(1) + ' ' + L.vby + ' ' + L.vbw + ' ' + L.vbh);
+  var camX = null, camTarget = 0, camRaf = null;
+  function writeFrame() {
+    svg.setAttribute('viewBox', camX.toFixed(1) + ' ' + L.vby + ' ' + L.vbw + ' ' + L.vbh);
+  }
+  function camTick() {
+    var d = camTarget - camX;
+    if (Math.abs(d) < 0.4) { camX = camTarget; writeFrame(); camRaf = null; return; }
+    camX += d * 0.10; writeFrame();
+    camRaf = requestAnimationFrame(camTick);
+  }
+  function setFrame(tv, snap) {
+    camTarget = L.vbx0 + (L.vbx1 - L.vbx0) * tv;
+    if (snap || camX === null || reduce) { camX = camTarget; writeFrame(); return; }
+    if (!camRaf) camRaf = requestAnimationFrame(camTick);
   }
 
   function slot(i) { return [L.ox + (i % L.cols) * L.colw, L.oy + Math.floor(i / L.cols) * L.rowh]; }
@@ -293,7 +304,7 @@ h1 .l2{color:var(--ink);font-weight:400}
     while (gMess.firstChild) gMess.removeChild(gMess.firstChild);
     while (gOrd.firstChild) gOrd.removeChild(gOrd.firstChild);
 
-    setFrame(0);
+    camX = null; setFrame(0, true);
     lock.setAttribute('transform', L.lock);
     hit.setAttribute('cx', L.wx); hit.setAttribute('cy', L.wy);
     cap.setAttribute('x', L.capx); cap.setAttribute('y', L.capy);
@@ -421,7 +432,8 @@ h1 .l2{color:var(--ink);font-weight:400}
     var r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
     var sc = Math.min(r.width / vb.width, r.height / vb.height);
     var ox = r.left + (r.width - vb.width * sc) / 2, oy = r.top + (r.height - vb.height * sc) / 2;
-    return Math.atan2((ev.clientY - oy) / sc - L.wy, (ev.clientX - ox) / sc - L.wx) * 180 / Math.PI;
+    var ux = (ev.clientX - ox) / sc + vb.x, uy = (ev.clientY - oy) / sc + vb.y;
+    return Math.atan2(uy - L.wy, ux - L.wx) * 180 / Math.PI;
   }
   dial.addEventListener('pointerdown', function (e) {
     dragging = true; lastAng = angleAt(e); markUsed();
